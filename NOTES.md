@@ -161,6 +161,28 @@ number you were happy to believe.
 
 ---
 
+**And the measured topology turned out not to matter.** The control table is in
+[`docs/experiment.md`](docs/experiment.md), but the headline is worth putting here: a
+degree-preserving **rewired** graph, retrained at an identical budget, scored **0.844 —
+exactly what the real circuit scored** — and lost *fewer* games to perfect play. Silencing
+the circuit does collapse play (0.844 → 0.441), so circuit activity genuinely carries the
+decision. But what the readout learned to exploit is a recurrent network with the fly's
+degree distribution and contact-count statistics; *which* cell connects to which contributed
+nothing measurable.
+
+Both facts are true at once, and they are the two claims people routinely conflate:
+
+> "the circuit is doing the computation" ≠ "the fly's wiring is good at this"
+
+The first needs a silencing control. The second needs a rewired control at equal budget, and
+that is the one usually missing from the archive.
+
+One more, from choosing a solved game: **nothing here reaches the actual bar.** A good
+tic-tac-toe player never loses to perfect play. Ours loses 88/200 — and the unconstrained
+direct-board control still loses 42/200. Beating a random opponent 800 times in 1,000 looks
+like competence and is not. In Doom, Minecraft or driving there is no perfect opponent to
+check against, which is precisely why "the fly is playing" reads as plausible there.
+
 ## Reading the archive
 
 `../archive/` has 85 repos. Sorted by which stage they vary:

@@ -4,7 +4,8 @@
 Play it, watch the cells light up in the real 3D soma atlas, and train the controller from
 random weights in your own browser.
 
-<!-- LIVE_LINK -->
+> Not deployed yet. `npm ci && npm run dev` to play locally; the GitHub Pages
+> workflow in `.github/workflows/pages.yml` publishes it on the first push to `main`.
 
 ## What is real here, and what is not
 
