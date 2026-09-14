@@ -1,10 +1,10 @@
 /** DAgger-style supervised training against exact minimax, reading only circuit activity. */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCircuit, rewire } from '../src/flybrain/circuit.ts';
 import { Controller } from '../src/flybrain/controller.ts';
-import { N_PARAMS, randomReadout } from '../src/flybrain/readout.ts';
+import { randomReadout } from '../src/flybrain/readout.ts';
 import { TRAINING_POOL } from '../src/game/opponents.ts';
 import { DEFAULT_IMITATE, FLY_SHAPE, assertFinite, collect, paramCount, train } from '../src/training/imitate.ts';
 import { DIRECT_HIDDEN, DirectController } from '../src/training/baselines.ts';
@@ -22,8 +22,7 @@ const circuit = buildCircuit(doc);
 
 const shape = variant === 'direct' ? { nIn: N_CHANNELS, nHidden: DIRECT_HIDDEN, nOut: 9 } : FLY_SHAPE;
 const nParams = paramCount(shape);
-let theta = randomReadout(seed, 0.3).slice(0, nParams);
-if (theta.length < nParams) { const t = new Float64Array(nParams); t.set(theta); theta = t; }
+let theta = randomReadout(seed, 0.3, nParams);
 const ctl = variant === 'direct' ? new DirectController(theta) : new Controller(circuit, theta);
 const VALIDATION = Array.from({ length: 24 }, (_, i) => 1100001 + i);
 

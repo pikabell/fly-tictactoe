@@ -59,6 +59,13 @@ export type Circuit = {
  */
 export function buildCircuit(doc: CircuitDoc): Circuit {
   const n = doc.cells.length;
+  // Fail loudly if a circuit.json is rebuilt with different dimensions than the encoder and
+  // readout compiled against, rather than indexing past the end of an array at move time.
+  if (doc.inputCells.length !== 18) throw Error(`circuit has ${doc.inputCells.length} input cells, encoder expects 18`);
+  if (doc.outputCells.length !== 16) throw Error(`circuit has ${doc.outputCells.length} output cells, readout expects 16`);
+  for (const i of [...doc.inputCells, ...doc.outputCells]) {
+    if (!Number.isInteger(i) || i < 0 || i >= n) throw Error(`cell index ${i} out of range for ${n} cells`);
+  }
   const signs = new Int8Array(n);
   for (let i = 0; i < n; i++) signs[i] = signOf(doc.cells[i].nt);
 

@@ -23,7 +23,8 @@ Single-contact and recurrent edges are kept. No edge is synthesized.
   is a modelling choice applied to a *prediction*, not a measurement of synaptic sign.
 - **the dynamics.** `h ← 0.3·h + 0.7·tanh(u + 1.4·Wᵀh)`, three iterations. `h` is
   dimensionless — not a firing rate, not a membrane voltage.
-- **the readout.** 16 descending activities → 16 hidden → 9 square scores, 425 parameters.
+- **the readout.** 16 descending activities → 16 hidden → 9 square scores, 425 parameters,
+  trained to imitate exact minimax while never seeing the board.
 
 **Trained** — those 425 readout parameters, and nothing else. The graph, signs, dynamics and
 encoder are frozen. There is no plasticity anywhere in this model and no fly learned anything.
@@ -96,12 +97,22 @@ cell is unreachable from an input, rather than emitting a circuit that cannot wo
 Reproduce the training and the table:
 
 ```sh
-npm run diagnose                            # activity health + per-channel influence
-npm run train -- 20260914 250 circuit
-npm run train -- 20260914 250 rewired       # control
-npm run train -- 20260914 250 direct        # control
-npm run benchmark
+npm run diagnose                              # activity health + per-channel influence
+
+npm run imitate -- 20260914 20 circuit        # the shipped controller
+npm run imitate -- 20260914 20 rewired        # topology control
+npm run imitate -- 20260914 20 direct         # bottleneck control
+
+npm run train   -- 20260914 250 circuit       # the CEM comparison
+npm run train   -- 20260914 250 rewired
+npm run train   -- 20260914 250 direct
+
+npm run benchmark && npm run report           # control table -> README and docs
+npm run tactics                               # takes-win / blocks / optimal-move rates
 ```
+
+`npm run report` regenerates the table above from `public/benchmarks/benchmark.json`, so the
+published numbers are never typed by hand.
 
 ## Things worth trying in the UI
 
@@ -109,8 +120,10 @@ npm run benchmark
   control that shows the circuit is carrying the decision rather than decorating a readout.
 - **Reset state each move** — activity normally persists across moves within a game, so the
   circuit carries a trace of how the game developed. Turn it off and see whether it mattered.
-- **Train in this browser** — real CEM in a Web Worker, using the same modules as the visible
-  game. About a minute.
+- **Train in this browser** — real training in a Web Worker, using the same modules as the
+  visible game, about a minute. Switch the method between *imitate minimax* and
+  *cross-entropy (outcome only)* and watch the same circuit and the same 425 parameters
+  produce very different play. That gap is the most instructive thing here.
 
 ## Credits and licences
 
@@ -120,7 +133,7 @@ Built with [fly-connectome-template](https://github.com/cobanov/fly-connectome-t
 source-available licence, **not** OSI-approved. If you fork this, that credit has to stay in
 both your UI and your README.
 
-Protocol, dynamics and the CEM training setup follow
+Protocol and dynamics follow
 [Fly Dino](https://github.com/cobanov/flyjump)'s published
 [experiment protocol](https://github.com/cobanov/flyjump/blob/main/docs/experiment.md),
 widened from 8 input channels to 18. Found via

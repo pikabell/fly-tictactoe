@@ -8,9 +8,9 @@ import type { ActivityFrame } from './lib/replay';
 import { buildCircuit, type Circuit, type CircuitDoc } from './flybrain/circuit.ts';
 import { Controller, type Trace } from './flybrain/controller.ts';
 import { N_PARAMS, randomReadout } from './flybrain/readout.ts';
-import { EMPTY_BOARD, LINES, type Board as BoardType, type Mark, legalMoves, other, outcome, play, turn, winner } from './game/rules.ts';
+import { EMPTY_BOARD, LINES, type Board as BoardType, type Mark, other, outcome, play, turn, winner } from './game/rules.ts';
 import { noisyPerfect, perfectOpponent, randomOpponent, rng } from './game/opponents.ts';
-import type { TrainDone, TrainProgress } from './training/worker.ts';
+import type { Method, TrainDone, TrainProgress } from './training/worker.ts';
 
 type Level = 'random' | 'easy' | 'hard' | 'perfect';
 const OPPONENTS: Record<Level, ReturnType<typeof noisyPerfect>> = {
@@ -43,6 +43,7 @@ export function App() {
   const [tally, setTally] = useState({ you: 0, fly: 0, draw: 0 });
 
   const [training, setTraining] = useState<TrainProgress | null>(null);
+  const [method, setMethod] = useState<Method>('imitation');
   const worker = useRef<Worker | null>(null);
   const random = useRef(rng(Date.now() >>> 0));
 
@@ -158,11 +159,11 @@ export function App() {
       if (event.data.kind === 'progress') setTraining(event.data);
       else {
         setTheta(Float64Array.from(event.data.theta));
-        setCheckpointName(`trained in this browser · validation ${event.data.championValidation.toFixed(3)} · ${event.data.seconds.toFixed(0)}s`);
+        setCheckpointName(`trained in this browser · ${event.data.method} · validation ${event.data.championValidation.toFixed(3)} · ${event.data.seconds.toFixed(0)}s`);
         setTraining(null); w.terminate(); worker.current = null;
       }
     };
-    w.postMessage({ kind: 'train', doc, seed: 20260914, generations: 60 });
+    w.postMessage({ kind: 'train', doc, seed: 20260914, rounds: method === 'cem' ? 60 : 12, method });
   };
   const stopTraining = () => { worker.current?.postMessage({ kind: 'stop' }); };
   useEffect(() => () => worker.current?.terminate(), []);
@@ -229,12 +230,18 @@ export function App() {
         <Decision outputs={trace?.outputs ?? null} scores={trace?.scores ?? null} board={board} outputTypes={outputTypes} move={trace?.move ?? null} />
         <div className="train">
           <button onClick={startTraining} disabled={!doc || !!training}>Train in this browser</button>
+          <label className="select">method
+            <select value={method} disabled={!!training} onChange={e => setMethod(e.target.value as Method)}>
+              <option value="imitation">imitate minimax</option>
+              <option value="cem">cross-entropy (outcome only)</option>
+            </select>
+          </label>
           {training && <>
             <button onClick={stopTraining}>Stop</button>
-            <span className="train-status">gen {training.generation + 1}/{training.generations} · best {training.bestTraining.toFixed(3)} · champion {training.championValidation.toFixed(3)}</span>
-            <span className="train-bar"><span style={{ width: `${((training.generation + 1) / training.generations) * 100}%` }} /></span>
+            <span className="train-status">{training.method} · step {training.step + 1}/{training.steps} · this step {training.detail.toFixed(3)} · best {training.championValidation.toFixed(3)}</span>
+            <span className="train-bar"><span style={{ width: `${((training.step + 1) / training.steps) * 100}%` }} /></span>
           </>}
-          {!training && <span className="train-status">425 readout parameters · cross-entropy method · the measured graph never changes</span>}
+          {!training && <span className="train-status">425 readout parameters · the measured graph never changes · try both methods, the gap between them is the point</span>}
         </div>
       </section>
 

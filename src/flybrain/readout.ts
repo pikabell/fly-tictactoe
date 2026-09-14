@@ -46,7 +46,7 @@ export function chooseMove(raw: Float64Array, legal: readonly number[]): number 
   return best;
 }
 
-export function randomReadout(seed: number, sigma = 0.7): Readout {
+export function randomReadout(seed: number, sigma = 0.7, n: number = N_PARAMS): Readout {
   let a = seed >>> 0;
   const rnd = () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -54,8 +54,8 @@ export function randomReadout(seed: number, sigma = 0.7): Readout {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const theta = new Float64Array(N_PARAMS);
-  for (let i = 0; i < N_PARAMS; i++) {
+  const theta = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
     // Box-Muller, matching the sampler used during training.
     const u1 = Math.max(rnd(), 1e-12), u2 = rnd();
     theta[i] = sigma * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);

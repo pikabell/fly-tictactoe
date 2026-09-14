@@ -15,7 +15,10 @@
     "check:assets": "node scripts/check-assets.mjs",
     "train": "node --experimental-strip-types scripts/train.mjs",
     "benchmark": "node --experimental-strip-types scripts/benchmark.mjs",
-    "diagnose": "node --experimental-strip-types scripts/diagnose.mjs"
+    "diagnose": "node --experimental-strip-types scripts/diagnose.mjs",
+    "imitate": "node --experimental-strip-types scripts/imitate.mjs",
+    "tactics": "node --experimental-strip-types scripts/tactics.mjs",
+    "report": "node --experimental-strip-types scripts/report.mjs"
   },
   "dependencies": {
     "react": "19.2.6",

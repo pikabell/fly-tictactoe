@@ -17,7 +17,7 @@ import { buildCircuit, rewire } from '../src/flybrain/circuit.ts';
 import { Controller } from '../src/flybrain/controller.ts';
 import { randomReadout } from '../src/flybrain/readout.ts';
 import { EMPTY_BOARD, key, legalMoves, other, outcome, play, turn, winner } from '../src/game/rules.ts';
-import { bestMoves, perfectOpponent, randomOpponent, rng } from '../src/game/opponents.ts';
+import { bestMoves, perfectOpponent, rng } from '../src/game/opponents.ts';
 import { DirectController } from '../src/training/baselines.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -99,9 +99,10 @@ rows.push(
 );
 if (rw) rows.push(assess('Rewired graph, CEM', () => new Controller(buildCircuit(rewire(doc, 7777)), Float64Array.from(rw.theta))));
 if (dir) rows.push(assess('Raw board -> net, trained', () => new DirectController(Float64Array.from(dir.theta))));
-rows.push(assess('Random legal move', () => ({
-  newGame() {}, move(b) { const l = legalMoves(b); return { move: l[Math.floor(Math.random() * l.length)] }; },
-})));
+rows.push(assess('Random legal move', () => {
+  const r = rng(4242);   // seeded, so this baseline row is reproducible like every other
+  return { newGame() {}, move(b) { const l = legalMoves(b); return { move: l[Math.floor(r() * l.length) % l.length] }; } };
+}));
 
 console.log(`\n${positions.length} reachable non-terminal positions · ${wins.length} with an immediate win available · ${blocks.length} needing a block\n`);
 const pad = (s, n) => String(s).padEnd(n);

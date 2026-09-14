@@ -11,6 +11,23 @@ import { runCem } from '../src/training/cem.ts';
 const doc = JSON.parse(readFileSync(new URL('../public/data/circuit.json', import.meta.url), 'utf8'));
 const circuit = buildCircuit(doc);
 
+test('every selected cell is a visible body ID in the template atlas', () => {
+  // If this fails the 3D view silently omits cells and the replay validator would reject the
+  // frame. It was an assumption in the build script for a while before it was ever checked.
+  const ids = new Uint32Array(readFileSync(new URL('../public/data/brain-atlas/ids.bin', import.meta.url)).buffer.slice(0));
+  const groups = new Uint8Array(readFileSync(new URL('../public/data/brain-atlas/groups.bin', import.meta.url)).buffer.slice(0));
+  const visible = new Set();
+  for (let i = 0; i < ids.length; i++) if (groups[i] < 3) visible.add(ids[i]);
+  const missing = doc.cells.filter(c => !visible.has(c.bodyId)).map(c => c.bodyId);
+  assert.deepEqual(missing, [], 'cells absent from the visible atlas');
+});
+
+test('buildCircuit rejects a circuit whose shape the encoder/readout cannot use', () => {
+  assert.throws(() => buildCircuit({ ...doc, inputCells: doc.inputCells.slice(0, 5) }), /input cells/);
+  assert.throws(() => buildCircuit({ ...doc, outputCells: doc.outputCells.slice(0, 3) }), /output cells/);
+  assert.throws(() => buildCircuit({ ...doc, inputCells: [...doc.inputCells.slice(1), 99999] }), /out of range/);
+});
+
 test('circuit.json matches its own declared counts', () => {
   assert.equal(doc.cells.length, doc.counts.cells);
   assert.equal(doc.edges.length, doc.counts.edges);
@@ -107,13 +124,27 @@ test('no illegal move across 200 games, trained or not', () => {
   }
 });
 
-test('rewiring preserves edge count, contacts and in-degree, and changes targets', () => {
+test('rewiring preserves both degree sequences and total contacts, and changes targets', () => {
   const r = rewire(doc, 7777);
   assert.equal(r.edges.length, doc.edges.length);
   assert.equal(r.edges.reduce((a, e) => a + e.contacts, 0), doc.counts.contacts);
-  const deg = (d) => { const m = new Map(); for (const e of d.edges) m.set(e.pre, (m.get(e.pre) ?? 0) + 1); return m; };
-  assert.deepEqual([...deg(r)].sort(), [...deg(doc)].sort(), 'out-degree changed');
+  const deg = (d, side) => {
+    const m = new Map();
+    for (const e of d.edges) m.set(e[side], (m.get(e[side]) ?? 0) + 1);
+    return [...m].sort((a, b) => a[0] - b[0]);
+  };
+  // out-degree is trivially preserved (pre is untouched); in-degree is the real claim, and
+  // holds because shuffling the post column permutes the multiset of postsynaptic targets.
+  assert.deepEqual(deg(r, 'pre'), deg(doc, 'pre'), 'out-degree changed');
+  assert.deepEqual(deg(r, 'post'), deg(doc, 'post'), 'in-degree changed');
   assert.ok(r.edges.some((e, i) => e.post !== doc.edges[i].post), 'rewiring changed nothing');
+});
+
+test('the shipped checkpoint is the imitation one, and it is finite and the right size', () => {
+  const c = JSON.parse(readFileSync(new URL('../public/checkpoints/champion-imitation.json', import.meta.url), 'utf8'));
+  assert.equal(c.theta.length, N_PARAMS);
+  for (const v of c.theta) assert.ok(Number.isFinite(v), 'checkpoint contains a non-finite parameter');
+  assert.equal(c.dataset, 'male-cns:v1.0');
 });
 
 test('CEM is deterministic for a seed', () => {

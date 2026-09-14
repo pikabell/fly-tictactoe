@@ -119,12 +119,33 @@ remembering: "the brain ran" and "the brain drove the output" are different clai
 Illegal squares are masked to −∞ before the argmax, so an illegal move is impossible by
 construction rather than something training has to learn.
 
-Trained with the **cross-entropy method**: sample 64 candidates from a diagonal Gaussian,
-keep the best 8, move the distribution towards them, repeat. No gradients, ~30 lines.
-
 **Nothing biological changes during training.** The graph, the signs, the dynamics and the
 encoder are frozen. Whatever skill appears was learned by a 425-parameter perceptron reading
 a fly circuit — there is no plasticity anywhere in this model, and no fly learned anything.
+
+Two training signals, and the difference between them turned out to be the biggest single
+effect in the project:
+
+| | signal | takes an available win | blocks a threat | loses to perfect |
+|---|---|---:|---:|---:|
+| **CEM** | final game result only | 46.9% | 36.0% | 88/200 |
+| **Imitation** | minimax's optimal moves | 52.7% | 56.1% | **11/200** |
+| *random play* | — | *42.4%* | *33.2%* | *185/200* |
+
+The cross-entropy method samples 64 candidates from a diagonal Gaussian, keeps the best 8,
+and moves the distribution towards them. No gradients, ~30 lines. But its only feedback is
+**one bit after up to nine decisions**, and the controller it produced blocked an immediate
+threat 36% of the time against random play's 33%. It had learned an opening, not tactics.
+
+Because tic-tac-toe is solved we can do better: label every position with minimax's optimal
+moves and train the readout to match (Adam, masked cross-entropy, DAgger — data recollected
+under the current policy each round so training states match visited states). The readout
+still sees **only** the 16 descending activities and never the board. The connectome's role
+does not change at all; only the quality of the learning signal does.
+
+This is worth generalising. In Doom or Minecraft there is no oracle, so outcome-only reward
+is all you have — and the controllers those projects train are subject to exactly the
+weakness measured above, with no way to detect it.
 
 ### 5. Controls — how you find out whether any of it mattered
 
@@ -163,12 +184,12 @@ number you were happy to believe.
 
 **And the measured topology turned out not to matter.** The control table is in
 [`docs/experiment.md`](docs/experiment.md), but the headline is worth putting here: a
-degree-preserving **rewired** graph, retrained at an identical budget, scored **0.844 —
-exactly what the real circuit scored** — and lost *fewer* games to perfect play. Silencing
-the circuit does collapse play (0.844 → 0.441), so circuit activity genuinely carries the
-decision. But what the readout learned to exploit is a recurrent network with the fly's
-degree distribution and contact-count statistics; *which* cell connects to which contributed
-nothing measurable.
+degree-preserving **rewired** graph, retrained at an identical budget, scores **0.850 against
+the real circuit's 0.854** — a gap of 0.004, and it held under both training signals.
+Silencing the circuit does collapse play (0.854 → 0.644, and 11 → 153 losses against perfect),
+so circuit activity genuinely carries the decision. But what the readout learned to exploit is
+a recurrent network with the fly's degree distribution and contact-count statistics; *which*
+cell connects to which contributed nothing measurable.
 
 Both facts are true at once, and they are the two claims people routinely conflate:
 
@@ -178,10 +199,16 @@ The first needs a silencing control. The second needs a rewired control at equal
 that is the one usually missing from the archive.
 
 One more, from choosing a solved game: **nothing here reaches the actual bar.** A good
-tic-tac-toe player never loses to perfect play. Ours loses 88/200 — and the unconstrained
-direct-board control still loses 42/200. Beating a random opponent 800 times in 1,000 looks
-like competence and is not. In Doom, Minecraft or driving there is no perfect opponent to
-check against, which is precisely why "the fly is playing" reads as plausible there.
+tic-tac-toe player never loses to perfect play. Ours loses 11/200 — much better than the
+88/200 it started at, but not zero — and the unconstrained direct-board control, trained
+identically, loses 6/200. Beating a random opponent ~76% of the time looks like competence
+and is not. In Doom, Minecraft or driving there is no perfect opponent to check against,
+which is precisely why "the fly is playing" reads as plausible there.
+
+The silenced controller makes the same point sharply: it scores **0.644 against a random
+opponent — better than random play's 0.481 — while being literally unable to see the board.**
+A fixed square order beats guessing. Against perfect play it loses 153/200. Any project
+reporting only "beats a random baseline" has reported almost nothing.
 
 ## Reading the archive
 
@@ -223,9 +250,15 @@ list and this project follows it closely enough that differences are informative
 cd flytictactoe
 uv run --with pyarrow --with numpy python scripts/build_circuit.py ../data/malecns
 npm ci && npm test
-node --experimental-strip-types scripts/train.mjs 20260914 250 circuit
-node --experimental-strip-types scripts/benchmark.mjs
+npm run diagnose                          # activity health + per-channel influence
+npm run imitate  -- 20260914 20 circuit   # the shipped controller
+npm run train    -- 20260914 250 circuit  # the CEM comparison
+npm run benchmark && npm run report       # control table -> README and docs
+npm run tactics                           # takes-win / blocks / optimal-move rates
 npm run dev
 ```
 
-`scripts/diagnose.mjs` prints the activity health check and per-channel influence table.
+`npm run diagnose` prints the activity health check and per-channel influence table;
+`npm run tactics` scores every controller over all 4,520 reachable positions. Every number
+quoted in the README and `docs/experiment.md` is generated by `npm run report` from
+`public/benchmarks/benchmark.json`, never typed by hand.

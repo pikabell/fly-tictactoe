@@ -9,9 +9,7 @@
  * connectome contributes nothing here. We are choosing 18 cells and injecting numbers.
  */
 
-import type { Board } from '../game/rules.ts';
-import type { Mark } from '../game/rules.ts';
-import { other } from '../game/rules.ts';
+import { type Board, type Mark, other } from '../game/rules.ts';
 import type { Circuit } from './circuit.ts';
 
 /** 18 channels: 0-8 "my mark is here", 9-17 "their mark is here". */

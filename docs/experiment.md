@@ -110,21 +110,50 @@ impossible by construction. No path carries board information to the readout exc
 the circuit — asserted by test (a silenced controller produces identical scores for every
 board).
 
-Training: diagonal Gaussian **cross-entropy method** — score-based policy search, not DQN,
-PPO, NEAT or backpropagation. 64 candidates, 8 elites, 250 generations, seed `20260914`;
-mean/sigma ← 0.3·old + 0.7·elite, sigma floor 0.07; candidate 0 preserves the champion.
-Fitness is the mean score over 96 games per candidate (12 seeds × 4 pool opponents × both
-colours); a draw counts 0.5 because a draw is the correct tic-tac-toe result. Opponent pool:
-random, ε-greedy perfect at ε = 0.5 and 0.2, and exact minimax.
+**Only the 425 readout parameters change** under either method below. The graph, signs,
+dynamics and encoder are fixed; there is no synaptic plasticity anywhere in this model.
+Validation is the fixed seed set 1,100,001–1,100,024 for both; training seeds start at 1.
 
-Training seeds start at 1, validation is the fixed set 1,100,001–1,100,024, and the champion
-is replaced only on strictly improved validation score. **Only the 425 readout parameters
-change.** The graph, signs, dynamics and encoder are fixed; there is no synaptic plasticity
-anywhere in this model.
+### Method A — cross-entropy method (the comparison)
+
+Diagonal Gaussian CEM: score-based policy search, not DQN, PPO, NEAT or backpropagation.
+64 candidates, 8 elites, 250 generations, seed `20260914`; mean/sigma ← 0.3·old + 0.7·elite,
+sigma floor 0.07; candidate 0 preserves the champion. Fitness is the mean score over 96 games
+per candidate (12 seeds × 4 pool opponents × both colours); a draw counts 0.5 because a draw
+is the correct tic-tac-toe result. Opponent pool: random, ε-greedy perfect at ε = 0.5 and 0.2,
+and exact minimax. The champion is replaced only on strictly improved validation score.
 
 An early run used 24 games per candidate and produced a bouncing validation curve and a
 champion that froze at generation 35 — CEM was ranking noise rather than skill. 96 games per
 candidate fixed it. Recorded because the failure looked like convergence.
+
+### Method B — imitation of exact minimax (**shipped**)
+
+CEM's only feedback is the final game result: one bit after up to nine decisions. Measured
+over all 4,520 reachable positions, the CEM controller took an available immediate win 46.9%
+of the time and blocked an immediate threat 36.0% — against 42.4% and 33.2% for random play.
+It had learned an opening, not tactics.
+
+Because tic-tac-toe is solved, every position can be labelled with the moves minimax calls
+optimal. The readout is trained to match, by Adam on a masked softmax cross-entropy over
+legal moves (lr 0.01, batch 64, L2 1e-5). Training data is collected by **playing**, with
+circuit state persisting across moves exactly as in the real game, and re-collected under the
+current policy each round (DAgger, 20 rounds, ε decaying 0.9 → 0.1) so training states match
+the states the controller actually visits. The best-by-validation round is kept, not the last.
+
+**The readout still sees only the 16 descending activities and never the board.** The
+connectome's role is identical under both methods; only the learning signal differs. Result:
+blocking 36.0% → 56.1%, and losses against perfect play 88/200 → 11/200.
+
+The direct-board control is trained by the same method with the same shape, so the
+bottleneck comparison in the table below is like-for-like.
+
+A NaN bug in the first version of this trainer is worth recording: a local `batch` shadowed
+`config.batch`, so `1 / batch` divided by an *array*. Every gradient became NaN, the
+parameter vector went NaN, and because `raw[m] > bestScore` is false for NaN the controller
+silently degenerated to "always play the first legal square" — which scores 66% optimal-move
+accuracy and reads as mediocre learning rather than as a broken run. `assertFinite()` now
+guards every round.
 
 ## Held-out evaluation
 
@@ -165,7 +194,8 @@ weights frozen before this test.
 - Neurotransmitter values are **predictions**, and predicted transmitter is not synaptic sign.
 - `h` is dimensionless. No spikes, no membrane voltages, no delays, no plasticity.
 - One training seed per condition. Three replicas would be the minimum for any claim about
-  the difference between conditions, and are not included here.
+  the difference between conditions, and are not included here. The trained-vs-rewired gap
+  (0.854 vs 0.850) is well inside what a second seed could move.
 - The Flybody mesh on screen is display only; nothing in this project drives a body.
 - Nothing here shows that fly connectivity is *suited* to tic-tac-toe, and the rewired
   control is reported specifically so that reading is not available.

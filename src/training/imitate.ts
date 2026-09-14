@@ -21,7 +21,7 @@
  * states match the states the controller actually visits.
  */
 
-import { N_HIDDEN, N_IN, N_OUT, N_PARAMS, type Readout } from '../flybrain/readout.ts';
+import { N_HIDDEN, N_IN, N_OUT, type Readout } from '../flybrain/readout.ts';
 import type { Controller } from '../flybrain/controller.ts';
 import { EMPTY_BOARD, type Mark, legalMoves, outcome, play, turn } from '../game/rules.ts';
 import { type Opponent, bestMoves, rng } from '../game/opponents.ts';
