@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# Raw connectome tables (~1.1 GB). Rebuild with ../data/fetch_malecns.sh;
+# scripts/build_circuit.py verifies their SHA-256 before using them.
+*.feather
+data/malecns/
