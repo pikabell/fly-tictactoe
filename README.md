@@ -40,12 +40,19 @@ Held-out seeds (2,100,001+), disjoint from training and validation, weights froz
 <!-- BENCHMARK_TABLE -->
 | Controller | vs random (W/D/L) | score | losses vs perfect | illegal | what it answers |
 |---|---|---:|---:|---:|---|
-| Circuit + trained readout | 800/88/112 | 0.844 | 88/200 | 0 | the result |
-| Same readout, circuit SILENCED | 345/191/464 | 0.441 | 196/200 | 0 | does the circuit carry the signal? |
+| Circuit + imitation readout | 759/189/52 | 0.854 | 11/200 | 0 | the shipped result |
+| Circuit + CEM readout | 800/88/112 | 0.844 | 88/200 | 0 | outcome-only reward |
+| Same readout, circuit SILENCED | 600/89/311 | 0.644 | 153/200 | 0 | does the circuit carry the signal? |
 | Circuit + untrained readout | 518/125/357 | 0.581 | 159/200 | 0 | is training doing the work? |
-| REWIRED graph, retrained (equal budget) | 815/58/127 | 0.844 | 62/200 | 0 | is THIS topology special? |
-| Raw board -> net (457 params), trained | 800/122/78 | 0.861 | 42/200 | 0 | cost of the bottleneck |
+| REWIRED + imitation (equal budget) | 778/143/79 | 0.850 | 19/200 | 0 | is THIS topology special? |
+| REWIRED + CEM (equal budget) | 815/58/127 | 0.844 | 62/200 | 0 | same, for the CEM readout |
+| Raw board -> net (457 par), imitation | 828/153/19 | 0.904 | 6/200 | 0 | cost of the bottleneck |
+| Raw board -> net (457 par), CEM | 800/122/78 | 0.861 | 42/200 | 0 | same, outcome-only reward |
 | Random legal move | 417/128/455 | 0.481 | 185/200 | 0 | the floor |
+
+1000 games vs random and 200 vs perfect per controller. Score counts a draw as 0.5, because a draw is the correct result in tic-tac-toe. Checkpoint: seed 20260914, 250 generations.
+
+1000 games vs random and 200 vs perfect per controller. Score counts a draw as 0.5, because a draw is the correct result in tic-tac-toe. Checkpoint: seed 20260914, 250 generations.
 
 1000 games vs random and 200 vs perfect per controller. Score counts a draw as 0.5, because a draw is the correct result in tic-tac-toe. Checkpoint: seed 20260914, 250 generations.
 
@@ -56,11 +63,12 @@ Read it as two separate questions:
   with the same degree distribution do?
 
 <!-- BENCHMARK_READING -->
-**Does the circuit carry the decision?** Yes. Silencing it drops the score from **0.844 to 0.441** (−0.403) with the same 425 weights, and a silenced controller is literally board-blind — it produces identical scores for every position, which the test suite asserts. Training matters too: an untrained readout on the live circuit scores 0.581.
-**Does *this* measured topology matter?** **No — not measurably.** A degree-preserving rewired graph, retrained at an identical budget, scores 0.844 against the real circuit's 0.844. That is the honest result and it is worth stating plainly: the readout learned to use a recurrent network with the fly's degree distribution and contact-count statistics, and shuffling which cell connects to which cost it nothing. Anyone claiming fly wiring is *good at* a task needs exactly this control, and it is the one most often missing.
-**What does the bottleneck cost?** Feeding the raw 18-channel board into a network of comparable size (457 parameters) scores 0.861. Routing the board through 98 fly cells and reading only 16 descending ones costs about 0.017. The circuit is a constraint on the task, not an advantage — which is what you would expect, and is fine, as long as nobody says otherwise.
-**Nobody reaches the real bar.** Tic-tac-toe is solved, so a genuinely good controller should *never* lose to perfect play. Against exact minimax the trained circuit still loses **88/200** games, and even the unconstrained direct-board control loses 42/200. A 425-parameter feed-forward readout with no search simply is not a strong tic-tac-toe player, and beating a random opponent 80% of the time should not be mistaken for one.
-**The floor:** random legal play scores 0.481, and the silenced controller scores 0.441 — *below* random, because a board-blind network plays the same fixed square preference every game. **Illegal moves: 0 across every condition** — masking makes them impossible by construction, not by training.
+**Does the training signal matter?** Enormously, and this was the fix for "it always loses". CEM optimises only the final game result — one bit of feedback after up to nine decisions — and the controller it produced blocked an immediate threat just **36%** of the time, against **33%** for random play. Training the same 425 parameters to imitate exact minimax instead, still reading **only** the 16 descending activities and never the board, takes blocking to **56%** and cuts losses against perfect play from **88/200 to 11/200**. The connectome's role is unchanged; only the quality of the learning signal changed.
+**Does the circuit carry the decision?** Yes. Silencing it drops the score from **0.854 to 0.644** (−0.209) with the same 425 weights, and losses against perfect play rise from 11/200 to 153/200. A silenced controller is literally board-blind — it produces identical scores for every position, which the test suite asserts, so what it retains is one fixed square preference that happens to be a passable opening. Training matters too: an untrained readout on the live circuit scores 0.581.
+**Does *this* measured topology matter?** **No — not measurably.** A degree-preserving rewired graph, retrained at an identical budget, scores 0.850 against the real circuit's 0.854 (the real circuit is slightly ahead on losses to perfect play, 11 vs 19 of 200 — one seed, so not a finding). That is the honest result and it is worth stating plainly: the readout learned to use a recurrent network with the fly's degree distribution and contact-count statistics, and shuffling which cell connects to which cost it nothing. Anyone claiming fly wiring is *good at* a task needs exactly this control, and it is the one most often missing.
+**What does the bottleneck cost?** Feeding the raw 18-channel board into a network of comparable size (457 parameters) scores 0.904. Routing the board through 98 fly cells and reading only 16 descending ones costs about 0.051. The circuit is a constraint on the task, not an advantage — which is what you would expect, and is fine, as long as nobody says otherwise.
+**Nobody reaches the real bar.** Tic-tac-toe is solved, so a genuinely good controller should *never* lose to perfect play. Against exact minimax the shipped controller still loses **11/200** games, and the unconstrained direct-board control, trained identically, loses 6/200. A few-hundred-parameter feed-forward readout with no search is not a strong tic-tac-toe player, and beating a random opponent ~76% of the time should not be mistaken for one.
+**The floor:** random legal play scores 0.481. The silenced controller scores 0.644, *above* random against a random opponent — a board-blind network still plays one fixed square order, and a fixed order beats guessing. Against perfect play that illusion collapses: 153/200 losses. Beating a weak opponent is not evidence of seeing the board. **Illegal moves: 0 across every condition** — masking makes them impossible by construction, not by training.
 
 Full protocol and limitations: [`docs/experiment.md`](docs/experiment.md).
 How any of this works, and how to build your own: [`NOTES.md`](NOTES.md).

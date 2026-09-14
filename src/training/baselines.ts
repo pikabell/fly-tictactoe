@@ -19,6 +19,7 @@ export const DIRECT_PARAMS = N_CHANNELS * DIRECT_HIDDEN + DIRECT_HIDDEN + DIRECT
 export class DirectController {
   private theta: Float64Array;
   private readonly feat = new Float64Array(N_CHANNELS);
+  private readonly scaled = new Float64Array(N_CHANNELS);
   private readonly sc = new Float64Array(9);
   constructor(theta: Float64Array) { this.theta = theta; }
   setReadout(theta: Float64Array): void { this.theta = theta; }
@@ -27,12 +28,13 @@ export class DirectController {
 
   move(board: Board, me: Mark): Trace {
     features(board, me, this.feat);
+    for (let i = 0; i < N_CHANNELS; i++) this.scaled[i] = 2 * (this.feat[i] - 0.5);
     const t = this.theta;
     let p = 0;
     const hidden = new Float64Array(DIRECT_HIDDEN);
     for (let j = 0; j < DIRECT_HIDDEN; j++) {
       let s = 0;
-      for (let i = 0; i < N_CHANNELS; i++) s += t[p++] * (2 * (this.feat[i] - 0.5));
+      for (let i = 0; i < N_CHANNELS; i++) s += t[p++] * this.scaled[i];
       hidden[j] = Math.tanh(s + t[N_CHANNELS * DIRECT_HIDDEN + j]);
     }
     p = N_CHANNELS * DIRECT_HIDDEN + DIRECT_HIDDEN;
@@ -41,7 +43,9 @@ export class DirectController {
       for (let j = 0; j < DIRECT_HIDDEN; j++) s += t[p++] * hidden[j];
       this.sc[k] = s + t[N_CHANNELS * DIRECT_HIDDEN + DIRECT_HIDDEN + DIRECT_HIDDEN * 9 + k];
     }
-    return { features: this.feat, outputs: new Float64Array(0), scores: this.sc, move: chooseMove(this.sc, legalMoves(board)) };
+    // `outputs` is this controller's readout INPUT, mirroring Controller.outputs, so the same
+    // imitation trainer can train both and the comparison stays apples-to-apples.
+    return { features: this.feat, outputs: this.scaled, scores: this.sc, move: chooseMove(this.sc, legalMoves(board)) };
   }
 }
 

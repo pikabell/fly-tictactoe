@@ -28,8 +28,27 @@
  "nParams": 425,
  "rows": [
   {
-   "condition": "Circuit + trained readout",
-   "note": "the result",
+   "condition": "Circuit + imitation readout",
+   "note": "the shipped result",
+   "vsRandom": {
+    "win": 759,
+    "draw": 189,
+    "loss": 52,
+    "games": 1000,
+    "winRate": 0.759,
+    "score": 0.8535
+   },
+   "vsPerfect": {
+    "losses": 11,
+    "draws": 189,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 7.319
+  },
+  {
+   "condition": "Circuit + CEM readout",
+   "note": "outcome-only reward",
    "vsRandom": {
     "win": 800,
     "draw": 88,
@@ -50,20 +69,20 @@
    "condition": "Same readout, circuit SILENCED",
    "note": "does the circuit carry the signal?",
    "vsRandom": {
-    "win": 345,
-    "draw": 191,
-    "loss": 464,
+    "win": 600,
+    "draw": 89,
+    "loss": 311,
     "games": 1000,
-    "winRate": 0.345,
-    "score": 0.4405
+    "winRate": 0.6,
+    "score": 0.6445
    },
    "vsPerfect": {
-    "losses": 196,
-    "draws": 4,
+    "losses": 153,
+    "draws": 47,
     "games": 200
    },
    "illegal": 0,
-   "movesPerGame": 7.965
+   "movesPerGame": 7.114
   },
   {
    "condition": "Circuit + untrained readout",
@@ -85,8 +104,27 @@
    "movesPerGame": 7.629
   },
   {
-   "condition": "REWIRED graph, retrained (equal budget)",
+   "condition": "REWIRED + imitation (equal budget)",
    "note": "is THIS topology special?",
+   "vsRandom": {
+    "win": 778,
+    "draw": 143,
+    "loss": 79,
+    "games": 1000,
+    "winRate": 0.778,
+    "score": 0.8495
+   },
+   "vsPerfect": {
+    "losses": 19,
+    "draws": 181,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 7.338
+  },
+  {
+   "condition": "REWIRED + CEM (equal budget)",
+   "note": "same, for the CEM readout",
    "vsRandom": {
     "win": 815,
     "draw": 58,
@@ -104,8 +142,27 @@
    "movesPerGame": 6.334
   },
   {
-   "condition": "Raw board -> net (457 params), trained",
+   "condition": "Raw board -> net (457 par), imitation",
    "note": "cost of the bottleneck",
+   "vsRandom": {
+    "win": 828,
+    "draw": 153,
+    "loss": 19,
+    "games": 1000,
+    "winRate": 0.828,
+    "score": 0.9045
+   },
+   "vsPerfect": {
+    "losses": 6,
+    "draws": 194,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 7.104
+  },
+  {
+   "condition": "Raw board -> net (457 par), CEM",
+   "note": "same, outcome-only reward",
    "vsRandom": {
     "win": 800,
     "draw": 122,

@@ -52,13 +52,28 @@ export function App() {
     void fetch(asset('data/circuit.json'), { signal: abort.signal })
       .then(r => { if (!r.ok) throw Error('circuit.json unavailable'); return r.json(); })
       .then(setDoc).catch(e => { if (!abort.signal.aborted) setError(String(e)); });
-    void fetch(asset('checkpoints/champion.json'), { signal: abort.signal })
-      .then(r => (r.ok ? r.json() : null))
-      .then(c => {
-        if (c?.theta?.length === N_PARAMS) { setTheta(Float64Array.from(c.theta)); setCheckpointName(`trained · seed ${c.seed} · ${c.generations} generations`); }
-        else { setTheta(randomReadout(1)); setCheckpointName('untrained (random weights)'); }
-      })
-      .catch(() => { setTheta(randomReadout(1)); setCheckpointName('untrained (random weights)'); });
+    // Prefer the imitation checkpoint: CEM optimises only the final game result, which is one
+    // bit of feedback after up to nine decisions, and the controller it produced blocked an
+    // immediate threat just 36% of the time. Imitating exact minimax — while still reading
+    // ONLY the 16 descending activities — raises that to 56% and to zero losses as X.
+    void (async () => {
+      for (const [file, label] of [
+        ['checkpoints/champion-imitation.json', 'imitation of minimax'],
+        ['checkpoints/champion.json', 'cross-entropy method'],
+      ] as const) {
+        try {
+          const r = await fetch(asset(file), { signal: abort.signal });
+          if (!r.ok) continue;
+          const c = await r.json();
+          if (c?.theta?.length !== N_PARAMS) continue;
+          setTheta(Float64Array.from(c.theta));
+          setCheckpointName(`trained · ${label} · 425 parameters`);
+          return;
+        } catch { if (abort.signal.aborted) return; }
+      }
+      setTheta(randomReadout(1));
+      setCheckpointName('untrained (random weights)');
+    })();
     return () => abort.abort();
   }, []);
 
@@ -72,24 +87,28 @@ export function App() {
   const inputTypes = useMemo(() => doc?.inputCells.map(i => doc.cells[i].type) ?? [], [doc]);
   const outputTypes = useMemo(() => doc?.outputCells.map(i => doc.cells[i].type) ?? [], [doc]);
 
-  const flyMove = useCallback((current: BoardType) => {
-    if (!controller || !circuit || !atlas) return;
-    if (resetEachMove) controller.newGame();
-    const t = controller.move(current, me);
-    setTrace({ ...t, features: Float64Array.from(t.features), outputs: Float64Array.from(t.outputs), scores: Float64Array.from(t.scores) });
-    setFrame(toFrame(circuit, controller.activity, atlas.visibleIds));
-    const next = play(current, t.move, me);
-    setBoard(next);
-    const end = outcome(next);
-    if (end.done) finish(end.winner);
-    else setStatus('Your move.');
-  }, [controller, circuit, atlas, me, resetEachMove]);
-
-  const finish = (w: Mark | null) => {
+  // The circuit's mark is passed explicitly, never read from state. `setMe` is async, so a
+  // callback that closed over `me` used the PREVIOUS mark when starting a circuit-first game —
+  // the circuit played O and the human was then also assigned O.
+  const finish = (w: Mark | null, flyMark: Mark) => {
     if (!w) { setStatus('Draw — which is the correct result in tic-tac-toe.'); setTally(t => ({ ...t, draw: t.draw + 1 })); }
-    else if (w === me) { setStatus('The circuit wins.'); setTally(t => ({ ...t, fly: t.fly + 1 })); }
+    else if (w === flyMark) { setStatus('The circuit wins.'); setTally(t => ({ ...t, fly: t.fly + 1 })); }
     else { setStatus('You win.'); setTally(t => ({ ...t, you: t.you + 1 })); }
   };
+
+  const flyMove = useCallback((current: BoardType, flyMark: Mark) => {
+    if (!controller || !circuit || !atlas) return;
+    if (turn(current) !== flyMark || outcome(current).done) return;
+    if (resetEachMove) controller.newGame();
+    const t = controller.move(current, flyMark);
+    setTrace({ ...t, features: Float64Array.from(t.features), outputs: Float64Array.from(t.outputs), scores: Float64Array.from(t.scores) });
+    setFrame(toFrame(circuit, controller.activity, atlas.visibleIds));
+    const next = play(current, t.move, flyMark);
+    setBoard(next);
+    const end = outcome(next);
+    if (end.done) finish(end.winner, flyMark);
+    else setStatus('Your move.');
+  }, [controller, circuit, atlas, resetEachMove]);
 
   const youPlay = (square: number) => {
     if (outcome(board).done || board[square] !== null) return;
@@ -98,9 +117,9 @@ export function App() {
     const next = play(board, square, youAre);
     setBoard(next);
     const end = outcome(next);
-    if (end.done) { finish(end.winner); return; }
+    if (end.done) { finish(end.winner, me); return; }
     setStatus('The circuit is deciding…');
-    setTimeout(() => flyMove(next), 220);
+    setTimeout(() => flyMove(next, me), 220);
   };
 
   const newGame = (flyMark: Mark = me) => {
@@ -108,7 +127,7 @@ export function App() {
     setBoard(EMPTY_BOARD);
     setTrace(null); setFrame(null);
     controller?.newGame();
-    if (flyMark === 'X') { setStatus('The circuit opens…'); setTimeout(() => flyMove(EMPTY_BOARD), 220); }
+    if (flyMark === 'X') { setStatus('The circuit opens…'); setTimeout(() => flyMove(EMPTY_BOARD, flyMark), 220); }
     else setStatus('Your move.');
   };
 
@@ -120,12 +139,12 @@ export function App() {
     const end = outcome(board);
     if (end.done) { const t = setTimeout(() => newGame(me), 900); return () => clearTimeout(t); }
     const t = setTimeout(() => {
-      if (turn(board) === me) flyMove(board);
+      if (turn(board) === me) flyMove(board, me);
       else {
         const next = play(board, OPPONENTS[level](board, turn(board), random.current), turn(board));
         setBoard(next);
         const e2 = outcome(next);
-        if (e2.done) finish(e2.winner);
+        if (e2.done) finish(e2.winner, me);
       }
     }, 320);
     return () => clearTimeout(t);

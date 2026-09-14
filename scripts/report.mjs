@@ -22,23 +22,42 @@ const table = [
 
 const find = (needle) => b.rows.find(r => r.condition.toLowerCase().includes(needle));
 const trained = b.rows[0], silenced = find('silenc'), untrained = find('untrained');
-const rewired = find('rewired'), direct = find('raw board'), rnd = find('random legal');
+const rewired = find('rewired'), rnd = find('random legal');
+const direct = b.rows.find(r => /raw board/i.test(r.condition) && /imitation/i.test(r.condition)) || find('raw board');
+const cem = find('cem readout');
 
 const gap = (a, c) => (a && c ? (a.vsRandom.score - c.vsRandom.score) : 0);
 const reading = [
+  (cem
+    ? `**Does the training signal matter?** Enormously, and this was the fix for "it always ` +
+      `loses". CEM optimises only the final game result — one bit of feedback after up to nine ` +
+      `decisions — and the controller it produced blocked an immediate threat just **36%** of ` +
+      `the time, against **33%** for random play. Training the same 425 parameters to imitate ` +
+      `exact minimax instead, still reading **only** the 16 descending activities and never the ` +
+      `board, takes blocking to **56%** and cuts losses against perfect play from ` +
+      `**${cem.vsPerfect.losses}/${cem.vsPerfect.games} to ${trained.vsPerfect.losses}/${trained.vsPerfect.games}**. ` +
+      `The connectome's role is unchanged; only the quality of the learning signal changed.\n`
+    : '') +
   `**Does the circuit carry the decision?** Yes. Silencing it drops the score from ` +
   `**${trained.vsRandom.score.toFixed(3)} to ${silenced.vsRandom.score.toFixed(3)}** ` +
   `(${gap(trained, silenced) >= 0 ? '−' : '+'}${Math.abs(gap(trained, silenced)).toFixed(3)}) with the same 425 weights, ` +
-  `and a silenced controller is literally board-blind — it produces identical scores for every ` +
-  `position, which the test suite asserts. Training matters too: an untrained readout on the ` +
-  `live circuit scores ${untrained.vsRandom.score.toFixed(3)}.`,
+  `and losses against perfect play rise from ${trained.vsPerfect.losses}/${trained.vsPerfect.games} ` +
+  `to ${silenced.vsPerfect.losses}/${silenced.vsPerfect.games}. A silenced controller is literally ` +
+  `board-blind — it produces identical scores for every position, which the test suite asserts, so ` +
+  `what it retains is one fixed square preference that happens to be a passable opening. Training ` +
+  `matters too: an untrained readout on the live circuit scores ${untrained.vsRandom.score.toFixed(3)}.`,
   '',
   rewired
     ? `**Does *this* measured topology matter?** ` +
       (Math.abs(gap(trained, rewired)) < 0.02
         ? `**No — not measurably.** A degree-preserving rewired graph, retrained at an identical ` +
           `budget, scores ${rewired.vsRandom.score.toFixed(3)} against the real circuit's ` +
-          `${trained.vsRandom.score.toFixed(3)}. That is the honest result and it is worth stating ` +
+          `${trained.vsRandom.score.toFixed(3)}` +
+          (rewired.vsPerfect.losses !== trained.vsPerfect.losses
+            ? ` (the real circuit is slightly ahead on losses to perfect play, ` +
+              `${trained.vsPerfect.losses} vs ${rewired.vsPerfect.losses} of ${trained.vsPerfect.games} — one seed, so not a finding)`
+            : '') +
+          `. That is the honest result and it is worth stating ` +
           `plainly: the readout learned to use a recurrent network with the fly's degree ` +
           `distribution and contact-count statistics, and shuffling which cell connects to which ` +
           `cost it nothing. Anyone claiming fly wiring is *good at* a task needs exactly this ` +
@@ -58,15 +77,21 @@ const reading = [
     : '',
   '',
   `**Nobody reaches the real bar.** Tic-tac-toe is solved, so a genuinely good controller ` +
-  `should *never* lose to perfect play. Against exact minimax the trained circuit still loses ` +
+  `should *never* lose to perfect play. Against exact minimax the shipped controller still loses ` +
   `**${trained.vsPerfect.losses}/${trained.vsPerfect.games}** games` +
-  (direct ? `, and even the unconstrained direct-board control loses ${direct.vsPerfect.losses}/${direct.vsPerfect.games}` : '') +
-  `. A 425-parameter feed-forward readout with no search simply is not a strong tic-tac-toe ` +
-  `player, and beating a random opponent 80% of the time should not be mistaken for one.`,
+  (direct ? `, and the unconstrained direct-board control, trained identically, loses ` +
+            `${direct.vsPerfect.losses}/${direct.vsPerfect.games}` : '') +
+  `. A few-hundred-parameter feed-forward readout with no search is not a strong tic-tac-toe ` +
+  `player, and beating a random opponent ~76% of the time should not be mistaken for one.`,
   '',
-  `**The floor:** random legal play scores ${rnd.vsRandom.score.toFixed(3)}, and the silenced ` +
-  `controller scores ${silenced.vsRandom.score.toFixed(3)} — *below* random, because a ` +
-  `board-blind network plays the same fixed square preference every game. ` +
+  `**The floor:** random legal play scores ${rnd.vsRandom.score.toFixed(3)}. The silenced ` +
+  `controller scores ${silenced.vsRandom.score.toFixed(3)}, ` +
+  (silenced.vsRandom.score > rnd.vsRandom.score
+    ? `*above* random against a random opponent — a board-blind network still plays one fixed ` +
+      `square order, and a fixed order beats guessing. Against perfect play that illusion ` +
+      `collapses: ${silenced.vsPerfect.losses}/${silenced.vsPerfect.games} losses. Beating a ` +
+      `weak opponent is not evidence of seeing the board.`
+    : `*below* random, because a board-blind network repeats one fixed square preference.`) + ` ` +
   `**Illegal moves: ${b.rows.reduce((a, r) => a + r.illegal, 0)} across every condition** — ` +
   `masking makes them impossible by construction, not by training.`,
 ].filter(Boolean).join('\n');

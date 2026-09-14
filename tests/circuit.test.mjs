@@ -124,3 +124,26 @@ test('CEM is deterministic for a seed', () => {
   assert.deepEqual(Array.from(a.champion), Array.from(b.champion));
   assert.deepEqual(a.history, b.history);
 });
+
+test('game flow: marks strictly alternate whichever side the circuit takes', () => {
+  // Regression guard. The UI once started a circuit-first game with a stale mark, so the
+  // circuit played O and the human was then also assigned O. `flyMove` now refuses to move
+  // when it is not that mark's turn; this asserts the invariant it protects.
+  for (const flyMark of ['X', 'O']) {
+    const human = flyMark === 'X' ? 'O' : 'X';
+    const ctl = new Controller(circuit, randomReadout(11));
+    ctl.newGame();
+    let board = EMPTY_BOARD;
+    const played = [];
+    while (!outcome(board).done) {
+      const mark = turn(board);
+      assert.equal(mark, played.length % 2 === 0 ? 'X' : 'O', 'X must move on even plies');
+      const m = mark === flyMark ? ctl.move(board, flyMark).move : legalMoves(board)[0];
+      board = play(board, m, mark);
+      played.push(mark);
+    }
+    assert.deepEqual(played, played.map((_, i) => (i % 2 === 0 ? 'X' : 'O')));
+    assert.ok(played.filter(m => m === flyMark).length >= 2, 'the circuit must actually have moved');
+    assert.ok(played.filter(m => m === human).length >= 2, 'the human must actually have moved');
+  }
+});

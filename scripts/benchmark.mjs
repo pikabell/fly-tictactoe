@@ -26,6 +26,9 @@ const rewired = buildCircuit(rewire(doc, 7777));
 const champion = read('../public/checkpoints/champion.json');
 const rewiredCk = read('../public/checkpoints/champion-rewired.json');
 const directCk = read('../public/checkpoints/champion-direct.json');
+const imiCk = read('../public/checkpoints/champion-imitation.json');
+const imiRwCk = read('../public/checkpoints/champion-imitation-rewired.json');
+const imiDirCk = read('../public/checkpoints/champion-imitation-direct.json');
 if (!champion) { console.error('no champion.json — run scripts/train.mjs first'); process.exit(1); }
 
 const theta = Float64Array.from(champion.theta);
@@ -44,13 +47,19 @@ function run(make, opponent, seeds) {
   return tally;
 }
 
-const conditions = [
-  { name: 'Circuit + trained readout', make: () => new Controller(circuit, theta), note: 'the result' },
-  { name: 'Same readout, circuit SILENCED', make: () => new Controller(circuit, theta, true), note: 'does the circuit carry the signal?' },
+const shipped = imiCk ? Float64Array.from(imiCk.theta) : theta;
+const conditions = [];
+if (imiCk) conditions.push({ name: 'Circuit + imitation readout', make: () => new Controller(circuit, shipped), note: 'the shipped result' });
+conditions.push(
+  { name: 'Circuit + CEM readout', make: () => new Controller(circuit, theta), note: 'outcome-only reward' },
+  { name: 'Same readout, circuit SILENCED', make: () => new Controller(circuit, shipped, true), note: 'does the circuit carry the signal?' },
   { name: 'Circuit + untrained readout', make: () => new Controller(circuit, untrained), note: 'is training doing the work?' },
-];
-if (rewiredCk) conditions.push({ name: 'REWIRED graph, retrained (equal budget)', make: () => new Controller(rewired, Float64Array.from(rewiredCk.theta)), note: 'is THIS topology special?' });
-if (directCk) conditions.push({ name: `Raw board -> net (${DIRECT_PARAMS} params), trained`, make: () => new DirectController(Float64Array.from(directCk.theta)), note: 'cost of the bottleneck' });
+);
+if (imiRwCk) conditions.push({ name: 'REWIRED + imitation (equal budget)', make: () => new Controller(rewired, Float64Array.from(imiRwCk.theta)), note: 'is THIS topology special?' });
+if (rewiredCk) conditions.push({ name: 'REWIRED + CEM (equal budget)', make: () => new Controller(rewired, Float64Array.from(rewiredCk.theta)), note: 'same, for the CEM readout' });
+// Trained the SAME way as the shipped controller, or the bottleneck comparison is unfair.
+if (imiDirCk) conditions.push({ name: `Raw board -> net (${DIRECT_PARAMS} par), imitation`, make: () => new DirectController(Float64Array.from(imiDirCk.theta)), note: 'cost of the bottleneck' });
+if (directCk) conditions.push({ name: `Raw board -> net (${DIRECT_PARAMS} par), CEM`, make: () => new DirectController(Float64Array.from(directCk.theta)), note: 'same, outcome-only reward' });
 conditions.push({ name: 'Random legal move', make: (random) => new RandomController(random), note: 'the floor' });
 
 const rows = [];
