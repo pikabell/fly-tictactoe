@@ -1,0 +1,145 @@
+{
+ "generated": "2026-09-14",
+ "heldOutSeeds": {
+  "from": 2100001,
+  "to": 2100125
+ },
+ "checkpoint": {
+  "seed": 20260914,
+  "generations": 250,
+  "validation": 0.5963541666666666
+ },
+ "circuit": {
+  "cells": 98,
+  "edges": 1494,
+  "contacts": 27762,
+  "inputs": 18,
+  "bridges": 64,
+  "outputs": 16,
+  "singleContactEdges": 381,
+  "selfEdges": 0,
+  "neurotransmitters": {
+   "acetylcholine": 64,
+   "gaba": 26,
+   "glutamate": 7,
+   "unclear": 1
+  }
+ },
+ "nParams": 425,
+ "rows": [
+  {
+   "condition": "Circuit + trained readout",
+   "note": "the result",
+   "vsRandom": {
+    "win": 800,
+    "draw": 88,
+    "loss": 112,
+    "games": 1000,
+    "winRate": 0.8,
+    "score": 0.844
+   },
+   "vsPerfect": {
+    "losses": 88,
+    "draws": 112,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 6.339
+  },
+  {
+   "condition": "Same readout, circuit SILENCED",
+   "note": "does the circuit carry the signal?",
+   "vsRandom": {
+    "win": 345,
+    "draw": 191,
+    "loss": 464,
+    "games": 1000,
+    "winRate": 0.345,
+    "score": 0.4405
+   },
+   "vsPerfect": {
+    "losses": 196,
+    "draws": 4,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 7.965
+  },
+  {
+   "condition": "Circuit + untrained readout",
+   "note": "is training doing the work?",
+   "vsRandom": {
+    "win": 518,
+    "draw": 125,
+    "loss": 357,
+    "games": 1000,
+    "winRate": 0.518,
+    "score": 0.5805
+   },
+   "vsPerfect": {
+    "losses": 159,
+    "draws": 41,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 7.629
+  },
+  {
+   "condition": "REWIRED graph, retrained (equal budget)",
+   "note": "is THIS topology special?",
+   "vsRandom": {
+    "win": 815,
+    "draw": 58,
+    "loss": 127,
+    "games": 1000,
+    "winRate": 0.815,
+    "score": 0.844
+   },
+   "vsPerfect": {
+    "losses": 62,
+    "draws": 138,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 6.334
+  },
+  {
+   "condition": "Raw board -> net (457 params), trained",
+   "note": "cost of the bottleneck",
+   "vsRandom": {
+    "win": 800,
+    "draw": 122,
+    "loss": 78,
+    "games": 1000,
+    "winRate": 0.8,
+    "score": 0.861
+   },
+   "vsPerfect": {
+    "losses": 42,
+    "draws": 158,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 6.491
+  },
+  {
+   "condition": "Random legal move",
+   "note": "the floor",
+   "vsRandom": {
+    "win": 417,
+    "draw": 128,
+    "loss": 455,
+    "games": 1000,
+    "winRate": 0.417,
+    "score": 0.481
+   },
+   "vsPerfect": {
+    "losses": 185,
+    "draws": 15,
+    "games": 200
+   },
+   "illegal": 0,
+   "movesPerGame": 7.621
+  }
+ ]
+}
